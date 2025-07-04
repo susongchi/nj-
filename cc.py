@@ -1,8 +1,10 @@
+import asyncio
 from ultralytics import YOLO
 import cv2
 import time
 from PIL import ImageFont, ImageDraw, Image
 import numpy as np
+import torch
 
 # ==== Config ====
 MODEL_PATH = 'yolov8m-pose.pt'
@@ -14,8 +16,13 @@ BRIGHTNESS_ALPHA = 1.2
 BRIGHTNESS_BETA = 10
 WINDOW_NAME = '手勢紅線偵測器 v6.9'
 
+# ==== 裝置判斷 ====
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(f"🖥️ 使用裝置：{device.upper()} ({torch.cuda.get_device_name(0) if device == 'cuda' else 'CPU 執行'})")
+
 # ==== 初始化 ====
 model = YOLO(MODEL_PATH)
+model.to(device)
 cap = cv2.VideoCapture(0)
 
 # ==== 狀態 ====
@@ -24,7 +31,7 @@ in_zone, last_cross_time, prev_x = {}, {}, {}
 tip_text = ""
 tip_expire = 0
 
-# ==== 功能模組 ====
+# ==== 功能函數 ====
 def put_chinese_text(img, text, pos, font_size=36, color=(255, 255, 0)):
     try:
         font = ImageFont.truetype(FONT_PATH, font_size)
@@ -50,13 +57,13 @@ def get_direction(prev_x, curr_x, center_x):
         return "right_to_left"
     return None
 
-def process_joint(pid, joint_idx, pts, confs, center_x, frame, now):
+def process_joint(joint_idx, pts, confs, center_x, frame, now):
     global tip_text, tip_expire
     if joint_idx >= len(pts) or confs[joint_idx] < CONFIDENCE_THRESHOLD:
         return
 
     x, y = map(int, pts[joint_idx])
-    key = (pid, joint_idx)
+    key = joint_idx
     in_now = abs(x - center_x) <= LINE_SENSITIVITY
     was_in = in_zone.get(key, False)
     last_time = last_cross_time.get(key, 0)
@@ -70,43 +77,67 @@ def process_joint(pid, joint_idx, pts, confs, center_x, frame, now):
             last_cross_time[key] = now
             tip_text = "從左邊穿越！" if direction == "left_to_right" else "從右邊穿越！"
             tip_expire = now + 1
-            print(f"✅ 關節 {key} 穿越紅線 ➜ {tip_text}")
+            print(f"關節 {key} 穿越紅線 ➜ {tip_text}")
 
     in_zone[key] = in_now
     prev_x[key] = x
 
-    # 畫框
+    # 畫框與提示
     cv2.rectangle(frame, (x - 12, y - 12), (x + 12, y + 12), (0, 255, 0), 2)
     cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
     cv2.putText(frame, "✋", (x + 8, y - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
-# ==== 主迴圈 ====
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
+# 非同步包裝函式
+async def process_joint_async(joint_idx, pts, confs, center_x, frame, now):
+    process_joint(joint_idx, pts, confs, center_x, frame, now)
 
-    frame = cv2.convertScaleAbs(frame, alpha=BRIGHTNESS_ALPHA, beta=BRIGHTNESS_BETA)
-    center_x = frame.shape[1] // 2
-    now = time.time()
+# 非同步任務：讀影像 + 偵測
+async def capture_and_detect(queue):
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-    results = model.predict(frame, save=False, conf=CONFIDENCE_THRESHOLD)
-    annotated = results[0].plot()
-    annotated = draw_ui(annotated, center_x)
+        frame = cv2.convertScaleAbs(frame, alpha=BRIGHTNESS_ALPHA, beta=BRIGHTNESS_BETA)
+        center_x = frame.shape[1] // 2
+        now = time.time()
 
-    for pid in range(len(results[0].keypoints.xy)):
-        pts = results[0].keypoints.xy[pid]
-        confs = results[0].keypoints.conf[pid]
+        results = model.predict(frame, save=False, conf=CONFIDENCE_THRESHOLD, device=device)
+        annotated = results[0].plot()
+        annotated = draw_ui(annotated, center_x)
 
-        for point_idx in [7, 8, 9, 10]:  # 左肘、右肘、左腕、右腕
-            process_joint(pid, point_idx, pts, confs, center_x, annotated, now)
+        if len(results[0].keypoints.xy) > 0:
+            pts = results[0].keypoints.xy[0]
+            confs = results[0].keypoints.conf[0]
 
-    if tip_text and now < tip_expire:
-        annotated = put_chinese_text(annotated, tip_text, (center_x - 100, 150), 42, (0, 255, 255))
+            tasks = [
+                process_joint_async(point_idx, pts, confs, center_x, annotated, now)
+                for point_idx in [7, 8, 9, 10]
+            ]
+            await asyncio.gather(*tasks)
 
-    cv2.imshow(WINDOW_NAME, annotated)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+        if tip_text and now < tip_expire:
+            annotated = put_chinese_text(annotated, tip_text, (center_x - 100, 150), 42, (0, 255, 255))
 
-cap.release()
-cv2.destroyAllWindows()
+        await queue.put(annotated)
+        await asyncio.sleep(0)
+
+# 非同步任務：顯示畫面
+async def display(queue):
+    while True:
+        frame = await queue.get()
+        cv2.imshow(WINDOW_NAME, frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    cap.release()
+    cv2.destroyAllWindows()
+
+# 主程式
+async def main():
+    queue = asyncio.Queue(maxsize=2)
+    producer = asyncio.create_task(capture_and_detect(queue))
+    consumer = asyncio.create_task(display(queue))
+    await asyncio.gather(producer, consumer)
+
+if __name__ == '__main__':
+    asyncio.run(main())
