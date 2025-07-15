@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>管理後台</title>
+  <style>
+    body { font-family: Arial; padding: 20px; max-width: 800px; margin: auto; }
+    h2, h3 { margin-bottom: 10px; }
+    input, button, select, textarea { font-size: 14px; margin: 5px 0; padding: 6px; width: 100%; }
+    #faceList img { width: 50px; height: 50px; margin-right: 10px; border-radius: 5px; vertical-align: middle; }
+    #faceList div { margin-bottom: 8px; }
+    #scheduleList { margin-top: 20px; }
+    #message, #registerMsg { margin-top: 10px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>人臉管理與會議排程</h2>
+
+  <section>
+    <h3>新增使用者</h3>
+    <label for="newName">姓名</label>
+    <input type="text" id="newName" placeholder="請輸入姓名" />
+
+    <label for="newPhoto">上傳人臉照片</label>
+    <input type="file" id="newPhoto" accept="image/*" />
+
+    <button id="registerBtn">註冊使用者</button>
+    <div id="registerMsg"></div>
+  </section>
+
+  <section>
+    <h3>已註冊人臉</h3>
+    <div id="faceList">載入中...</div>
+  </section>
+
+
+
+  <section>
+    <h3>設定排程</h3>
+    <label for="meetingName">會議名稱</label>
+    <input type="text" id="meetingName" placeholder="請輸入會議名稱" />
+
+    <label for="date">會議日期</label>
+    <input type="date" id="date" />
+
+    <label for="startTime">開始時間</label>
+    <input type="time" id="startTime" />
+
+    <label for="endTime">結束時間</label>
+    <input type="time" id="endTime" />
+
+    <label>選擇參與者</label>
+    <div id="participantsCheckboxes">載入中...</div>
+
+    <button id="saveScheduleBtn">儲存排程</button>
+    <div id="message"></div>
+  </section>
+
+  <section id="scheduleList">
+    <h3>現有會議排程</h3>
+    <div id="schedules">載入中...</div>
+  </section>
+
+<script>
+let ip = "https://f3f0dd590a09.ngrok-free.app/api";
+
+async function loadFaces() {
+  const res = await fetch(`${ip}/faces`);
+  const data = await res.json();
+  if (data.status === 'success') {
+    const container = document.getElementById('faceList');
+    const checkboxContainer = document.getElementById('participantsCheckboxes');
+    container.innerHTML = '';
+    checkboxContainer.innerHTML = '';
+
+    data.faces.forEach(f => {
+      const faceDiv = document.createElement('div');
+      faceDiv.innerHTML = `
+        <img src="${f.url}" alt="${f.name}">
+        ${f.name}
+        <button onclick="deleteUser(${f.id})" style="margin-left:10px;color:red;">❌ 刪除</button>
+      `;
+      container.appendChild(faceDiv);
+
+      const checkboxDiv = document.createElement('div');
+      checkboxDiv.innerHTML = `
+        <label>
+          <input type="checkbox" name="participants" value="${f.name}">
+          ${f.name}
+        </label>
+      `;
+      checkboxContainer.appendChild(checkboxDiv);
+    });
+  }
+}
+
+async function loadSchedules() {
+  const res = await fetch(`${ip}/get_schedules`);
+  const data = await res.json();
+  if (data.status === 'success') {
+    const container = document.getElementById('schedules');
+    container.innerHTML = '';
+    for (const [time, users] of Object.entries(data.schedule)) {
+  const safeTime = encodeURIComponent(time);
+  const div = document.createElement('div');
+  div.style.marginBottom = "10px";
+  div.innerHTML = `
+    ${time} ： ${users.join(', ')}
+    <button onclick="deleteSchedule(decodeURIComponent('${safeTime}'))" style="margin-left: 10px; color: red;">🗑️ 刪除排程</button>
+  `;
+  container.appendChild(div);
+}
+}}
+
+async function deleteUser(userId) {
+  if (!confirm('確定要刪除這個使用者嗎？這會清除照片與資料。')) return;
+
+  const res = await fetch(`${ip}/delete_user/${userId}`, {
+    method: 'DELETE'
+  });
+
+  const data = await res.json();
+  alert(data.message);
+  loadFaces();
+  loadSchedules();
+}
+
+async function deleteSchedule(fullTimeKey) {
+  if (!confirm(`你確定要刪除排程：${fullTimeKey} 嗎？`)) return;
+
+  const [meetingName, timeSlot] = fullTimeKey.split("｜"); 
+
+  const res = await fetch(`${ip}/delete_schedule`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      meeting_name: meetingName.trim(),
+      time_slot: timeSlot.trim()
+    })
+  });
+
+  const data = await res.json();
+  alert(data.message);
+  loadSchedules();  // 重新載入排程
+}
+
+
+document.getElementById('registerBtn').onclick = async () => {
+  const name = document.getElementById('newName').value.trim();
+  const photo = document.getElementById('newPhoto').files[0];
+  const msgDiv = document.getElementById('registerMsg');
+
+  if (!name || !photo) {
+    alert('請填寫姓名並選擇照片');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("name", name);
+  formData.append("photo", photo);
+
+  const res = await fetch(`${ip}/register`, {
+    method: 'POST',
+    body: formData
+  });
+
+  const data = await res.json();
+  if (data.status === 'success') {
+    msgDiv.style.color = 'green';
+    msgDiv.textContent = data.message;
+    document.getElementById('newName').value = '';
+    document.getElementById('newPhoto').value = '';
+    loadFaces();
+  } else {
+    msgDiv.style.color = 'red';
+    msgDiv.textContent = data.message;
+  }
+};
+
+document.getElementById('saveScheduleBtn').onclick = async () => {
+  const meetingName = document.getElementById('meetingName').value.trim();
+  const date = document.getElementById('date').value;
+  const start = document.getElementById('startTime').value;
+  const end = document.getElementById('endTime').value;
+
+  const checkboxes = document.querySelectorAll('input[name="participants"]:checked');
+  const names = Array.from(checkboxes).map(cb => cb.value);
+
+  if (!meetingName|| !date || !start || !end || names.length === 0) {
+    alert('請完整填寫會議名稱、日期、時間與參與者');
+    return;
+  }
+
+  if (start >= end) {
+    alert('結束時間不能早於或等於開始時間');
+    return;
+  }
+// {"meetingName": meetingName, "names":names, "time_slot": timeSlot}
+  const timeSlot = `${date} ${start}-${end}`;
+  const payload = {};
+  payload["time_slot"] = timeSlot;
+  payload["meeting_name"] = meetingName
+  payload["names"] = names;
+
+  const res = await fetch(`${ip}/allowed_users_by_schedule`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  const msgDiv = document.getElementById('message');
+  if (data.status === 'success') {
+    msgDiv.style.color = 'green';
+    msgDiv.textContent = data.message;
+    loadSchedules();
+  } else {
+    msgDiv.style.color = 'red';
+    msgDiv.textContent = data.message;
+  }
+};
+
+window.onload = () => {
+  loadFaces();
+  loadSchedules();
+};
+</script>
+</body>
+</html>
