@@ -13,6 +13,16 @@
   </style>
 </head>
 <body>
+  <section>
+    <h3>管理者登入</h3>
+    <label for="adminUser">帳號</label>
+    <input type="text" id="adminUser" />
+    <label for="adminPass">密碼</label>
+    <input type="password" id="adminPass" />
+    <button id="adminLoginBtn">登入</button>
+    <div id="adminLoginMsg"></div>
+  </section>
+
   <h2>人臉管理與會議排程</h2>
 
   <section>
@@ -63,8 +73,32 @@
 <script>
 let ip = "https://f3f0dd590a09.ngrok-free.app/api";
 
+document.getElementById("adminLoginBtn").onclick = async () => {
+  const username = document.getElementById("adminUser").value.trim();
+  const password = document.getElementById("adminPass").value.trim();
+  const msgDiv = document.getElementById("adminLoginMsg");
+
+  const res = await fetch(`${ip}/admin_login`, {
+    method: "POST",
+    credentials: "include",  // ⚠️ 重要！要送 cookie
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+  if (data.status === "success") {
+    msgDiv.style.color = "green";
+    msgDiv.textContent = "登入成功";
+    loadFaces();
+    loadSchedules();
+  } else {
+    msgDiv.style.color = "red";
+    msgDiv.textContent = data.message;
+  }
+};
+
 async function loadFaces() {
-  const res = await fetch(`${ip}/faces`);
+  const res = await fetch(`${ip}/faces`,{Credential:'include'});
   const data = await res.json();
   if (data.status === 'success') {
     const container = document.getElementById('faceList');
@@ -94,7 +128,7 @@ async function loadFaces() {
 }
 
 async function loadSchedules() {
-  const res = await fetch(`${ip}/get_schedules`);
+  const res = await fetch(`${ip}/get_schedules`, {Credential:'include'});
   const data = await res.json();
   if (data.status === 'success') {
     const container = document.getElementById('schedules');
@@ -115,7 +149,8 @@ async function deleteUser(userId) {
   if (!confirm('確定要刪除這個使用者嗎？這會清除照片與資料。')) return;
 
   const res = await fetch(`${ip}/delete_user/${userId}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    Credential:'include'
   });
 
   const data = await res.json();
@@ -131,6 +166,7 @@ async function deleteSchedule(fullTimeKey) {
 
   const res = await fetch(`${ip}/delete_schedule`, {
     method: "POST",
+    Credential:'include',
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       meeting_name: meetingName.trim(),
@@ -160,6 +196,7 @@ document.getElementById('registerBtn').onclick = async () => {
 
   const res = await fetch(`${ip}/register`, {
     method: 'POST',
+    Credential:'include',
     body: formData
   });
 
@@ -203,6 +240,7 @@ document.getElementById('saveScheduleBtn').onclick = async () => {
 
   const res = await fetch(`${ip}/allowed_users_by_schedule`, {
     method: 'POST',
+    Credential:'include',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
   });

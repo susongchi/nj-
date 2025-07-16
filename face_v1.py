@@ -14,7 +14,6 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 
 app = Flask(__name__)
 CORS(app, origins="*", supports_credentials=True)
-app.secret_key = "su-song-chi_monkey14"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REGISTERED_DIR = os.path.join(BASE_DIR, "static", "registered_faces")
@@ -102,12 +101,6 @@ def load_user(user_id):
             if user:
                 return AdminUser(user["id"], user["username"])
     return None
-@login_manager.unauthorized_handler
-def unauthorized_callback():
-    return jsonify({
-        "status": "fail",
-        "message": "❌ 尚未登入或登入已過期"
-    }), 401
 #=== 註冊功能 ===
 @app.route("/register", methods=["POST"])
 def register():
@@ -353,20 +346,6 @@ def admin_login():
 
     return jsonify({"status": "fail", "message": "❌ 帳號或密碼錯誤"}), 401
 
-@app.route("/admin_login_status", methods=["GET"])
-def admin_login_status():
-    if current_user.is_authenticated:
-        return jsonify({
-            "status": "success",
-            "message": f"✅ 已登入：{current_user.username}",
-            "username": current_user.username
-        })
-    else:
-        return jsonify({
-            "status": "fail",
-            "message": "❌ 尚未登入"
-        }), 401
-
 @app.route("/faces", methods=["GET"])
 @login_required
 def list_faces():
@@ -536,7 +515,7 @@ def delete_schedule():
 
     return jsonify({"status": "success", "message": f"✅ 已刪除排程：{meeting_name}｜{time_slot}"})
 
-@app.route("/admin_logout", methods=["POST"])
+@app.route("/admin_logout")
 def admin_logout():
     logout_user()
     return jsonify({"status": "success", "message": "✅ 已登出"})
