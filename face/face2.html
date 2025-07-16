@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>會議臉部辨識登入</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    video { border: 1px solid #ccc; }
+    #result, #meetingInfo, #loginStatus { margin-top: 20px; font-weight: bold; }
+    #result.success { color: green; }
+    #result.fail { color:red; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h2>臉部辨識登入系統</h2>
+  <div id="meetingInfo">讀取中...</div>
+  <div id="camera" style="display:none;">
+    <video id="video" width="320" height="240" autoplay muted></video>
+  </div>
+  <div id="result"></div>
+  <div id="loginStatus"></div>
+
+<script>
+const ip = "https://f3f0dd590a09.ngrok-free.app/api"; // 請換成你自己的 API URL
+const video = document.getElementById('video');
+const resultDiv = document.getElementById('result');
+const cameraDiv = document.getElementById('camera');
+const meetingInfo = document.getElementById('meetingInfo');
+const loginStatus = document.getElementById('loginStatus');
+
+let recentlyRecognized = {}; // { id: timestamp }
+const interval = 3000; // 每幾秒辨識一次
+const SIM_THRESHOLD = 0.6;
+
+async function loadMeeting() {
+  try {
+    const res = await fetch(`${ip}/current_meeting`);
+    const data = await res.json();
+    if (data.status === 'success') {
+      meetingInfo.innerHTML = `
+      <strong>會議名稱：</strong>${data.meeting_name}<br>
+      <strong>會議時段：</strong>${data.timeslot}<br>
+      <strong>參與者：</strong>${data.users.map(u => u.name).join(', ')}
+      `;
+    } else {
+      meetingInfo.innerHTML = `${data.message}`;
+    }
+  } catch (err) {
+    meetingInfo.innerHTML = "無法連線到後端";
+    console.error(err);
+  }
+}
+
+async function loadLoginStatus() {
+  try {
+    const res = await fetch(`${ip}/login_status`);
+    const data = await res.json();
+    if (data.status === 'success') {
+      let html = "<h3>登入狀態：</h3><ul>";
+      for (const [name, time] of Object.entries(data.logged_in)) {
+        html += `<li style="color:green;">${name} - ${time}</li>`;
+      }
+      for (const name of data.not_logged_in) {
+        html += `<li style="color:red;">${name} 未登入</li>`;
+      }
+      html += "</ul>";
+      loginStatus.innerHTML = html;
+    }
+  } catch (err) {
+    loginStatus.innerHTML = "無法載入登入狀態";
+    console.error(err);
+  }
+}
+
+function shouldRecognize(id) {
+  const now = Date.now();
+  return !recentlyRecognized[id] || (now - recentlyRecognized[id]) > 2 * 60 * 1000;
+}
+
+function autoDetect() {
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  const image = canvas.toDataURL('image/jpeg');
+
+  fetch(`${ip}/auto_verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success' && data.similarity >= SIM_THRESHOLD && shouldRecognize(data.id)) {
+      recentlyRecognized[data.id] = Date.now();
+      resultDiv.className = 'success';
+      resultDiv.innerHTML = `
+      歡迎 ${data.name}！<br>
+      會議：${data.meeting_name}<br>
+      相似度：${(data.similarity * 100).toFixed(2)}%
+      `;
+      loadLoginStatus();
+    } else if (data.status === 'fail') {
+      resultDiv.className = 'fail';
+      resultDiv.innerHTML = `${data.message}`;
+    }
+  })
+  .catch(err => {
+    resultDiv.className = 'fail';
+    resultDiv.innerHTML = "傳送影像錯誤";
+    console.error(err);
+  });
+}
+
+function startLoop() {
+  setInterval(() => {
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      autoDetect();
+    }
+  }, interval);
+}
+
+window.onload = () => {
+  loadMeeting();
+  loadLoginStatus();
+
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+      video.srcObject = stream;
+      cameraDiv.style.display = 'block';
+      startLoop();
+    })
+    .catch(err => {
+      console.error("無法開啟攝影機", err);
+      resultDiv.innerHTML = "無法開啟攝影機";
+    });
+};
+</script>
+</body>
+</html>
