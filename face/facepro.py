@@ -8,9 +8,13 @@ import pymysql
 from datetime import datetime
 from ultralytics import YOLO
 from flask_cors import CORS
+from flask import session
+from functools import wraps
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
 app = Flask(__name__)
 CORS(app, origins="*", supports_credentials=True)
+app.secret_key = "su-song-chi_monkey14"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REGISTERED_DIR = os.path.join(BASE_DIR, "static", "registered_faces")
@@ -71,9 +75,39 @@ def init_db():
                 FOREIGN KEY (meeting_id) REFERENCES meetings(id)
             )
         """)
-    conn.commit()
-    conn.close()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(100) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL
+            )
+        """)
+# 初始化 LoginManager
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "admin_login"
+class AdminUser(UserMixin):
+    def __init__(self, id, username):
+        self.id = id
+        self.username = username
 
+    def get_id(self):
+        return str(self.id)
+@login_manager.user_loader
+def load_user(user_id):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM admin_users WHERE id = %s", (user_id,))
+            user = cur.fetchone()
+            if user:
+                return AdminUser(user["id"], user["username"])
+    return None
+@login_manager.unauthorized_handler
+def unauthorized_callback():
+    return jsonify({
+        "status": "fail",
+        "message": "❌ 尚未登入或登入已過期"
+    }), 401
 #=== 註冊功能 ===
 @app.route("/register", methods=["POST"])
 def register():
@@ -303,7 +337,38 @@ def auto_verify():
             })
 
 # === 後臺管理 ===
+@app.route("/admin_login", methods=["POST"])
+def admin_login():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM admin_users WHERE username=%s", (username,))
+            user = cur.fetchone()
+            if user and user["password"] == password:
+                login_user(AdminUser(user["id"], user["username"]))
+                return jsonify({"status": "success", "message": "✅ 登入成功"})
+
+    return jsonify({"status": "fail", "message": "❌ 帳號或密碼錯誤"}), 401
+
+@app.route("/admin_login_status", methods=["GET"])
+def admin_login_status():
+    if current_user.is_authenticated:
+        return jsonify({
+            "status": "success",
+            "message": f"✅ 已登入：{current_user.username}",
+            "username": current_user.username
+        })
+    else:
+        return jsonify({
+            "status": "fail",
+            "message": "❌ 尚未登入"
+        }), 401
+
 @app.route("/faces", methods=["GET"])
+@login_required
 def list_faces():
     conn = get_db_connection()
     with conn.cursor() as cur:
@@ -314,6 +379,7 @@ def list_faces():
     return jsonify({"status": "success", "faces": faces})
 
 @app.route("/delete_user/<int:user_id>", methods=["DELETE"])
+@login_required
 def delete_user(user_id):
     try:
         with get_db_connection() as conn:
@@ -347,6 +413,7 @@ def delete_user(user_id):
         return jsonify({"status": "fail", "message": f"❌ 刪除失敗：{str(e)}"}), 500
 
 @app.route("/allowed_users_by_schedule", methods=["POST"])
+@login_required
 def save_schedule():
     new_data = request.get_json()
     if not isinstance(new_data, dict) or not new_data:
@@ -397,6 +464,7 @@ def save_schedule():
 
 
 @app.route("/get_schedules", methods=["GET"])
+@login_required
 def get_schedules():
     result = {}
     try:
@@ -431,6 +499,7 @@ def get_schedules():
 
 
 @app.route("/delete_schedule", methods=["POST"])
+@login_required
 def delete_schedule():
     data = request.get_json()
     if not data or 'time_slot' not in data.keys() or 'meeting_name' not in data.keys():
@@ -467,7 +536,10 @@ def delete_schedule():
 
     return jsonify({"status": "success", "message": f"✅ 已刪除排程：{meeting_name}｜{time_slot}"})
 
-
+@app.route("/admin_logout", methods=["POST"])
+def admin_logout():
+    logout_user()
+    return jsonify({"status": "success", "message": "✅ 已登出"})
 
 if __name__ == "__main__":
     init_db()

@@ -10,6 +10,7 @@ from ultralytics import YOLO
 from flask_cors import CORS
 from flask import session
 from functools import wraps
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
 app = Flask(__name__)
 CORS(app, origins="*", supports_credentials=True)
@@ -80,16 +81,26 @@ def init_db():
                 password VARCHAR(255) NOT NULL
             )
         """)
+# 初始化 LoginManager
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "admin_login"
+class AdminUser(UserMixin):
+    def __init__(self, id, username):
+        self.id = id
+        self.username = username
 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get("admin_logged_in"):
-            return jsonify({"status": "fail", "message": "未登入或權限不足"}), 401
-        return f(*args, **kwargs)
-    return decorated_function
-
-
+    def get_id(self):
+        return str(self.id)
+@login_manager.user_loader
+def load_user(user_id):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM admin_users WHERE id = %s", (user_id,))
+            user = cur.fetchone()
+            if user:
+                return AdminUser(user["id"], user["username"])
+    return None
 #=== 註冊功能 ===
 @app.route("/register", methods=["POST"])
 def register():
@@ -329,10 +340,8 @@ def admin_login():
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM admin_users WHERE username=%s", (username,))
             user = cur.fetchone()
-
             if user and user["password"] == password:
-                session["admin_logged_in"] = True
-                session["admin_user"] = username
+                login_user(AdminUser(user["id"], user["username"]))
                 return jsonify({"status": "success", "message": "✅ 登入成功"})
 
     return jsonify({"status": "fail", "message": "❌ 帳號或密碼錯誤"}), 401
@@ -508,9 +517,8 @@ def delete_schedule():
 
 @app.route("/admin_logout")
 def admin_logout():
-    session.clear()
+    logout_user()
     return jsonify({"status": "success", "message": "✅ 已登出"})
-
 
 if __name__ == "__main__":
     init_db()
