@@ -74,12 +74,13 @@ def init_db():
             )
         """)
         cur.execute("""
-            CREATE INDEX IF NOT EXISTS admin_users (
+            CREATE TABLE IF NOT EXISTS admin_users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 username VARCHAR(100) UNIQUE NOT NULL,
                 password VARCHAR(255) NOT NULL
             )
         """)
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
