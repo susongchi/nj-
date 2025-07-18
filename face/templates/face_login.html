@@ -21,14 +21,14 @@
   <div id="loginStatus"></div>
 
 <script>
-const ip = "https://f3f0dd590a09.ngrok-free.app/api"; // 請換成你自己的 API URL
+const ip = "https://f3f0dd590a09.ngrok-free.app/api";
 const video = document.getElementById('video');
 const resultDiv = document.getElementById('result');
 const cameraDiv = document.getElementById('camera');
 const meetingInfo = document.getElementById('meetingInfo');
 const loginStatus = document.getElementById('loginStatus');
 
-let recentlyRecognized = {}; // { id: timestamp }
+let recentlyRecognized = {}; 
 const interval = 3000; // 每幾秒辨識一次
 const SIM_THRESHOLD = 0.6;
 
