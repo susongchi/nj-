@@ -10,11 +10,14 @@ from ultralytics import YOLO
 from flask_cors import CORS
 from flask import session
 from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
 app = Flask(__name__)
 CORS(app, origins="*", supports_credentials=True)
 app.secret_key = "su-song-chi_monkey14"
+new_password = "su-song-chi_monkey14"
+hashed = generate_password_hash(new_password)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REGISTERED_DIR = os.path.join(BASE_DIR, "static", "registered_faces")
@@ -85,7 +88,7 @@ def init_db():
 # 初始化 LoginManager
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = "admin_login"
+login_manager.login_view = "/admin_login"
 class AdminUser(UserMixin):
     def __init__(self, id, username):
         self.id = id
@@ -337,35 +340,47 @@ def auto_verify():
             })
 
 # === 後臺管理 ===
+@app.route("/admin_register", methods=["POST"])
+def admin_register():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+    if not username or not password:
+        return jsonify({"status": "fail", "message": "❌ 使用者名稱或密碼不可為空"}), 400
+    hashed_password = generate_password_hash(password)
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("INSERT INTO admin_users (username, password) VALUES (%s, %s)", (username, hashed_password))
+                conn.commit()
+        return jsonify({"status": "success", "message": "✅ 管理員帳號已註冊"}),200
+    except pymysql.IntegrityError:
+        return jsonify({"status": "fail", "message": "❌ 使用者名稱已存在"}), 409
+                
 @app.route("/admin_login", methods=["POST"])
 def admin_login():
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
-
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM admin_users WHERE username=%s", (username,))
             user = cur.fetchone()
-            if user and user["password"] == password:
-                login_user(AdminUser(user["id"], user["username"]))
-                return jsonify({"status": "success", "message": "✅ 登入成功"})
-
-    return jsonify({"status": "fail", "message": "❌ 帳號或密碼錯誤"}), 401
+            if user is None:
+                return jsonify({"status": "fail", "message": "查無此資料"}), 401
+            if check_password_hash(user["password"], password):
+                login_user(AdminUser(user['id'], username))
+                return jsonify({"status": "success", "message": "登入成功"})
+            else:
+                return jsonify({"status": "fail", "message": "帳號或密碼錯誤"}), 401
 
 @app.route("/admin_login_status", methods=["GET"])
 def admin_login_status():
     if current_user.is_authenticated:
-        return jsonify({
-            "status": "success",
-            "message": f"✅ 已登入：{current_user.username}",
-            "username": current_user.username
-        })
+        return jsonify({"status": "success","message": 
+                        f"✅ 已登入：{current_user.username}","username": current_user.username})
     else:
-        return jsonify({
-            "status": "fail",
-            "message": "❌ 尚未登入"
-        }), 401
+        return jsonify({"status": "fail","message": "❌ 尚未登入"}), 401
 
 @app.route("/faces", methods=["GET"])
 @login_required

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>後臺登入註冊</title>
+<style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #message {
+      margin-top: 15px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .register-row{
+        display: flex;
+            justify-content: center;
+            width: 100%;
+            text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>註冊帳號</h2>
+
+  <label for="username">帳號</label>
+  <input type="text" id="username" placeholder="請輸入帳號" required>
+
+  <label for="password">密碼</label>
+  <input type="password" id="password" placeholder="請輸入密碼" required>
+
+  <div class="register-row">
+        <a href="/admin_login">登入</a>
+    </div>
+  <button onclick="register()">註冊</button>
+
+  <div id="message"></div>
+
+  <script>
+    let api = "https://f3f0dd590a09.ngrok-free.app/api";
+
+    async function register() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const msgDiv = document.getElementById("message");
+
+      if (!username || !password) {
+        msgDiv.textContent = "請輸入帳號與密碼";
+        msgDiv.style.color = "red";
+        return;
+      }
+
+      const res = await fetch(`${ip}/admin_register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      msgDiv.textContent = data.message;
+      msgDiv.style.color = data.status === "success" ? "green" : "red";
+    }
+  </script>
+</body>
+</html>
+

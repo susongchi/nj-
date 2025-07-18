@@ -11,17 +11,12 @@
     #scheduleList { margin-top: 20px; }
     #message, #registerMsg { margin-top: 10px; font-weight: bold; }
   </style>
+ <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 </head>
 <body>
-  <section>
-    <h3>管理者登入</h3>
-    <label for="adminUser">帳號</label>
-    <input type="text" id="adminUser" />
-    <label for="adminPass">密碼</label>
-    <input type="password" id="adminPass" />
-    <button id="adminLoginBtn">登入</button>
-    <div id="adminLoginMsg"></div>
-  </section>
+
 
   <h2>人臉管理與會議排程</h2>
 
@@ -41,8 +36,6 @@
     <h3>已註冊人臉</h3>
     <div id="faceList">載入中...</div>
   </section>
-
-
 
   <section>
     <h3>設定排程</h3>
@@ -69,36 +62,13 @@
     <h3>現有會議排程</h3>
     <div id="schedules">載入中...</div>
   </section>
+  <button id="logoutBtn">登出</button>
 
 <script>
 let ip = "https://f3f0dd590a09.ngrok-free.app/api";
 
-document.getElementById("adminLoginBtn").onclick = async () => {
-  const username = document.getElementById("adminUser").value.trim();
-  const password = document.getElementById("adminPass").value.trim();
-  const msgDiv = document.getElementById("adminLoginMsg");
-
-  const res = await fetch(`${ip}/admin_login`, {
-    method: "POST",
-    credentials: "include",  // ⚠️ 重要！要送 cookie
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
-  });
-
-  const data = await res.json();
-  if (data.status === "success") {
-    msgDiv.style.color = "green";
-    msgDiv.textContent = "登入成功";
-    loadFaces();
-    loadSchedules();
-  } else {
-    msgDiv.style.color = "red";
-    msgDiv.textContent = data.message;
-  }
-};
-
 async function loadFaces() {
-  const res = await fetch(`${ip}/faces`,{Credential:'include'});
+  const res = await fetch(`${ip}/faces`, { credentials: 'include' });
   const data = await res.json();
   if (data.status === 'success') {
     const container = document.getElementById('faceList');
@@ -128,29 +98,30 @@ async function loadFaces() {
 }
 
 async function loadSchedules() {
-  const res = await fetch(`${ip}/get_schedules`, {Credential:'include'});
+  const res = await fetch(`${ip}/get_schedules`, { credentials: 'include' });
   const data = await res.json();
   if (data.status === 'success') {
     const container = document.getElementById('schedules');
     container.innerHTML = '';
     for (const [time, users] of Object.entries(data.schedule)) {
-  const safeTime = encodeURIComponent(time);
-  const div = document.createElement('div');
-  div.style.marginBottom = "10px";
-  div.innerHTML = `
-    ${time} ： ${users.join(', ')}
-    <button onclick="deleteSchedule(decodeURIComponent('${safeTime}'))" style="margin-left: 10px; color: red;">🗑️ 刪除排程</button>
-  `;
-  container.appendChild(div);
+      const safeTime = encodeURIComponent(time);
+      const div = document.createElement('div');
+      div.style.marginBottom = "10px";
+      div.innerHTML = `
+        ${time} ： ${users.join(', ')}
+        <button onclick="deleteSchedule(decodeURIComponent('${safeTime}'))" style="margin-left: 10px; color: red;">🗑️ 刪除排程</button>
+      `;
+      container.appendChild(div);
+    }
+  }
 }
-}}
 
 async function deleteUser(userId) {
   if (!confirm('確定要刪除這個使用者嗎？這會清除照片與資料。')) return;
 
   const res = await fetch(`${ip}/delete_user/${userId}`, {
     method: 'DELETE',
-    Credential:'include'
+    credentials: 'include'
   });
 
   const data = await res.json();
@@ -166,7 +137,7 @@ async function deleteSchedule(fullTimeKey) {
 
   const res = await fetch(`${ip}/delete_schedule`, {
     method: "POST",
-    Credential:'include',
+    credentials: 'include',
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       meeting_name: meetingName.trim(),
@@ -176,9 +147,8 @@ async function deleteSchedule(fullTimeKey) {
 
   const data = await res.json();
   alert(data.message);
-  loadSchedules();  // 重新載入排程
+  loadSchedules();
 }
-
 
 document.getElementById('registerBtn').onclick = async () => {
   const name = document.getElementById('newName').value.trim();
@@ -196,7 +166,7 @@ document.getElementById('registerBtn').onclick = async () => {
 
   const res = await fetch(`${ip}/register`, {
     method: 'POST',
-    Credential:'include',
+    credentials: 'include',
     body: formData
   });
 
@@ -222,7 +192,7 @@ document.getElementById('saveScheduleBtn').onclick = async () => {
   const checkboxes = document.querySelectorAll('input[name="participants"]:checked');
   const names = Array.from(checkboxes).map(cb => cb.value);
 
-  if (!meetingName|| !date || !start || !end || names.length === 0) {
+  if (!meetingName || !date || !start || !end || names.length === 0) {
     alert('請完整填寫會議名稱、日期、時間與參與者');
     return;
   }
@@ -231,17 +201,18 @@ document.getElementById('saveScheduleBtn').onclick = async () => {
     alert('結束時間不能早於或等於開始時間');
     return;
   }
-// {"meetingName": meetingName, "names":names, "time_slot": timeSlot}
+
   const timeSlot = `${date} ${start}-${end}`;
-  const payload = {};
-  payload["time_slot"] = timeSlot;
-  payload["meeting_name"] = meetingName
-  payload["names"] = names;
+  const payload = {
+    time_slot: timeSlot,
+    meeting_name: meetingName,
+    names: names
+  };
 
   const res = await fetch(`${ip}/allowed_users_by_schedule`, {
     method: 'POST',
-    Credential:'include',
-    headers: {'Content-Type': 'application/json'},
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
 
@@ -257,9 +228,36 @@ document.getElementById('saveScheduleBtn').onclick = async () => {
   }
 };
 
-window.onload = () => {
-  loadFaces();
-  loadSchedules();
+document.getElementById('logoutBtn').onclick = () => {
+  handleLogout();
+};
+async function handleLogout() {
+  const res = await fetch(`${ip}/admin_logout`, {
+    method: 'POST',
+    credentials: 'include'
+  });
+  const data = await res.json();
+  if (res.ok) {
+    alert("登出成功");
+    window.location.href = "admin_login"; // ✅ 登出後跳轉到登入頁面
+  } else {
+    alert("登出失敗，請稍後再試");
+  }
+}
+// ✅ 檢查登入狀態（進入頁面時）
+window.onload = async () => {
+  const res = await fetch(`${ip}/admin_login_status`, {
+    method: 'GET',
+    credentials: 'include'
+  });
+  const data = await res.json();
+  if (data.status === 'success') {
+    loadFaces();
+    loadSchedules();
+  } else {
+    alert("尚未登入，請先登入管理者");
+    window.location.href = "admin_login"; // ✅ 如果未登入，跳轉到登入頁面
+  }
 };
 </script>
 </body>
