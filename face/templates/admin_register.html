@@ -61,14 +61,18 @@
   <div class="register-row">
         <a href="/admin_login">登入</a>
     </div>
-  <button onclick="register()">註冊</button>
+  <button id="registerBtn">註冊</button>
 
   <div id="message"></div>
 
   <script>
-    let api = "https://f3f0dd590a09.ngrok-free.app/api";
+    let ip = "https://b8a1bfc61afd.ngrok-free.app";
 
-    async function register() {
+    const username = document.getElementById("username")
+    const password = document.getElementById("password")
+    const inputList = [username, password]
+
+    const handleregister = async () => {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
       const msgDiv = document.getElementById("message");
@@ -79,16 +83,28 @@
         return;
       }
 
-      const res = await fetch(`${ip}/admin_register`, {
+      const res = await fetch(`${ip}/api/admin_register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })
       });
 
       const data = await res.json();
-      msgDiv.textContent = data.message;
-      msgDiv.style.color = data.status === "success" ? "green" : "red";
+      if (data.status === "success") {
+        msgDiv.style.color = "green";
+        msgDiv.textContent = "註冊成功";
+      } else{
+        msgDiv.style.color = "red";
+        msgDiv.textContent = data.message;
+      };
     }
+    inputList.forEach(element => {
+            element.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") {
+                    handleregister();
+                }
+            });
+        });
   </script>
 </body>
 </html>

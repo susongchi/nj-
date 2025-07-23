@@ -1,23 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>¤HÁyµù¥U¨t²Î</title>
+  <title>äººè‡‰è¨»å†Šç³»çµ±</title>
   <style>
     body { font-family: Arial; padding: 20px; text-align: center; }
     input, button { font-size: 16px; padding: 5px; margin: 10px 0; }
     video, canvas { display: block; margin: auto; }
     #message { margin-top: 10px; font-weight: bold; }
   </style>
+  <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-  <h2>¤HÁyµù¥U¨t²Î</h2>
+  <h2>äººè‡‰è¨»å†Šç³»çµ±</h2>
 
   <form id="registerForm">
-    ©m¦W¡G<input type="text" id="name" name="name" required />
+    å§“åï¼š<input type="text" id="name" name="name" required />
     <br>
     <video id="video" width="320" height="240" autoplay></video>
     <br>
-    <button type="submit">µù¥U</button>
+    <button type="submit">è¨»å†Š</button>
   </form>
 
   <canvas id="canvas" width="320" height="240" style="display: none;"></canvas>
@@ -25,25 +27,25 @@
 
   <script>
     const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
+    const canvas = document.getElementById('canvas');   
     const ctx = canvas.getContext('2d');
 
-    // ±Ò¥ÎÄá¼v¾÷
+    // å•Ÿç”¨æ”å½±æ©Ÿ
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => video.srcObject = stream)
-      .catch(err => alert('µLªk¶}±ÒÄá¼v¾÷¡G' + err));
+      .catch(err => alert('ç„¡æ³•é–‹å•Ÿæ”å½±æ©Ÿï¼š' + err));
 
     document.getElementById('registerForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const name = document.getElementById('name').value.trim();
-      if (!name) return alert("½Ğ¿é¤J©m¦W");
+      if (!name) return alert("è«‹è¼¸å…¥å§“å");
 
-      // ©ç·Ó
+      // æ‹ç…§
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = canvas.toDataURL('image/jpeg');
 
-      // ¶Ç°e¸ê®Æ
-      const res = await fetch('https://f3f0dd590a09.ngrok-free.app/api/register', {
+      // å‚³é€è³‡æ–™
+      const res = await fetch('https://b8a1bfc61afd.ngrok-free.app/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, image: imageData })

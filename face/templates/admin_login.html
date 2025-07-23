@@ -101,7 +101,7 @@
     </section>
 
     <script>
-        let ip = "https://f3f0dd590a09.ngrok-free.app/api";
+        let ip = "https://b8a1bfc61afd.ngrok-free.app";
 
         const eye = document.getElementById("eye")
         const username = document.getElementById("adminUser")
@@ -113,7 +113,7 @@
             const password = document.getElementById("adminPass").value.trim();
             const msgDiv = document.getElementById("adminLoginMsg");
 
-            const res = await fetch(`${ip}/admin_login`, {
+            const res = await fetch(`${ip}/api/admin_login`, {
                 method: "POST",
                 credentials: "include",  
                 headers: { "Content-Type": "application/json" },

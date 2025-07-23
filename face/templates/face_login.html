@@ -10,6 +10,8 @@
     #result.fail { color:red; }
     button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
   </style>
+  <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
   <h2>臉部辨識登入系統</h2>
@@ -21,7 +23,7 @@
   <div id="loginStatus"></div>
 
 <script>
-const ip = "https://f3f0dd590a09.ngrok-free.app/api";
+const ip = "https://b8a1bfc61afd.ngrok-free.app";
 const video = document.getElementById('video');
 const resultDiv = document.getElementById('result');
 const cameraDiv = document.getElementById('camera');
@@ -34,7 +36,7 @@ const SIM_THRESHOLD = 0.6;
 
 async function loadMeeting() {
   try {
-    const res = await fetch(`${ip}/current_meeting`);
+    const res = await fetch(`${ip}/api/current_meeting`);
     const data = await res.json();
     if (data.status === 'success') {
       meetingInfo.innerHTML = `
@@ -53,7 +55,7 @@ async function loadMeeting() {
 
 async function loadLoginStatus() {
   try {
-    const res = await fetch(`${ip}/login_status`);
+    const res = await fetch(`${ip}/api/login_status`);
     const data = await res.json();
     if (data.status === 'success') {
       let html = "<h3>登入狀態：</h3><ul>";
@@ -85,7 +87,7 @@ function autoDetect() {
   ctx.drawImage(video, 0, 0);
   const image = canvas.toDataURL('image/jpeg');
 
-  fetch(`${ip}/auto_verify`, {
+  fetch(`${ip}/api/auto_verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ image })
@@ -101,6 +103,13 @@ function autoDetect() {
       相似度：${(data.similarity * 100).toFixed(2)}%
       `;
       loadLoginStatus();
+    } else if (data.status === 'info') {
+      resultDiv.className = 'success';
+      resultDiv.innerHTML = `
+      ${data.name} 已於該會議登入過<br>
+      登入時間：約 ${data.message.split('於 ')[1]}<br>
+      相似度：${(data.similarity * 100).toFixed(2)}%
+    `;
     } else if (data.status === 'fail') {
       resultDiv.className = 'fail';
       resultDiv.innerHTML = `${data.message}`;

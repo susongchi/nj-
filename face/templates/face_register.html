@@ -8,6 +8,8 @@
     video, canvas { display: block; margin: auto; }
     #message { margin-top: 10px; font-weight: bold; }
   </style>
+  <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
   <h2>人臉註冊系統</h2>
@@ -43,7 +45,7 @@
       const imageData = canvas.toDataURL('image/jpeg');
 
       // 傳送資料
-      const res = await fetch('https://f3f0dd590a09.ngrok-free.app/api/register', {
+      const res = await fetch('https://b8a1bfc61afd.ngrok-free.app/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, image: imageData })

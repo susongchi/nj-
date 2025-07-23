@@ -1,19 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>·|Ä³Áy³¡¿ëÃÑµn¤J</title>
+  <title>æœƒè­°è‡‰éƒ¨è¾¨è­˜ç™»å…¥</title>
   <style>
     body { font-family: Arial; padding: 20px; }
     video { border: 1px solid #ccc; }
     #result, #meetingInfo, #loginStatus { margin-top: 20px; font-weight: bold; }
     #result.success { color: green; }
-    #result.fail { color: red; }
+    #result.fail { color:red; }
     button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
   </style>
+  <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-  <h2>Áy³¡¿ëÃÑµn¤J¨t²Î</h2>
-  <div id="meetingInfo">Åª¨ú¤¤...</div>
+  <h2>è‡‰éƒ¨è¾¨è­˜ç™»å…¥ç³»çµ±</h2>
+  <div id="meetingInfo">è®€å–ä¸­...</div>
   <div id="camera" style="display:none;">
     <video id="video" width="320" height="240" autoplay muted></video>
   </div>
@@ -21,53 +23,53 @@
   <div id="loginStatus"></div>
 
 <script>
-const ip = "https://f3f0dd590a09.ngrok-free.app/api"; // ½Ğ´«¦¨§A¦Û¤vªº API URL
+const ip = "https://b8a1bfc61afd.ngrok-free.app";
 const video = document.getElementById('video');
 const resultDiv = document.getElementById('result');
 const cameraDiv = document.getElementById('camera');
 const meetingInfo = document.getElementById('meetingInfo');
 const loginStatus = document.getElementById('loginStatus');
 
-let recentlyRecognized = {}; // { id: timestamp }
-const interval = 3000; // ¨C´X¬í¿ëÃÑ¤@¦¸
+let recentlyRecognized = {}; 
+const interval = 3000; // æ¯å¹¾ç§’è¾¨è­˜ä¸€æ¬¡
 const SIM_THRESHOLD = 0.6;
 
 async function loadMeeting() {
   try {
-    const res = await fetch(`${ip}/current_meeting`);
+    const res = await fetch(`${ip}/api/current_meeting`);
     const data = await res.json();
     if (data.status === 'success') {
       meetingInfo.innerHTML = `
-        <strong>·|Ä³¦WºÙ¡G</strong>${data.meeting_name}<br>
-        <strong>·|Ä³®É¬q¡G</strong>${data.timeslot}<br>
-        <strong>°Ñ»PªÌ¡G</strong>${data.users.map(u => u.name).join(', ')}
+      <strong>æœƒè­°åç¨±ï¼š</strong>${data.meeting_name}<br>
+      <strong>æœƒè­°æ™‚æ®µï¼š</strong>${data.timeslot}<br>
+      <strong>åƒèˆ‡è€…ï¼š</strong>${data.users.map(u => u.name).join(', ')}
       `;
     } else {
       meetingInfo.innerHTML = `${data.message}`;
     }
   } catch (err) {
-    meetingInfo.innerHTML = "µLªk³s½u¨ì«áºİ";
+    meetingInfo.innerHTML = "ç„¡æ³•é€£ç·šåˆ°å¾Œç«¯";
     console.error(err);
   }
 }
 
 async function loadLoginStatus() {
   try {
-    const res = await fetch(`${ip}/login_status`);
+    const res = await fetch(`${ip}/api/login_status`);
     const data = await res.json();
     if (data.status === 'success') {
-      let html = "<h3>µn¤Jª¬ºA¡G</h3><ul>";
+      let html = "<h3>ç™»å…¥ç‹€æ…‹ï¼š</h3><ul>";
       for (const [name, time] of Object.entries(data.logged_in)) {
         html += `<li style="color:green;">${name} - ${time}</li>`;
       }
       for (const name of data.not_logged_in) {
-        html += `<li style="color:red;">${name} ¥¼µn¤J</li>`;
+        html += `<li style="color:red;">${name} æœªç™»å…¥</li>`;
       }
       html += "</ul>";
       loginStatus.innerHTML = html;
     }
   } catch (err) {
-    loginStatus.innerHTML = "µLªk¸ü¤Jµn¤Jª¬ºA";
+    loginStatus.innerHTML = "ç„¡æ³•è¼‰å…¥ç™»å…¥ç‹€æ…‹";
     console.error(err);
   }
 }
@@ -85,7 +87,7 @@ function autoDetect() {
   ctx.drawImage(video, 0, 0);
   const image = canvas.toDataURL('image/jpeg');
 
-  fetch(`${ip}/auto_verify`, {
+  fetch(`${ip}/api/auto_verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ image })
@@ -96,11 +98,18 @@ function autoDetect() {
       recentlyRecognized[data.id] = Date.now();
       resultDiv.className = 'success';
       resultDiv.innerHTML = `
-        Åwªï ${data.name}¡I<br>
-        ·|Ä³¡G${data.meeting_name}<br>
-        ¬Û¦ü«×¡G${(data.similarity * 100).toFixed(2)}%
+      æ­¡è¿ ${data.name}ï¼<br>
+      æœƒè­°ï¼š${data.meeting_name}<br>
+      ç›¸ä¼¼åº¦ï¼š${(data.similarity * 100).toFixed(2)}%
       `;
       loadLoginStatus();
+    } else if (data.status === 'info') {
+      resultDiv.className = 'success';
+      resultDiv.innerHTML = `
+      ${data.name} å·²æ–¼è©²æœƒè­°ç™»å…¥é<br>
+      ç™»å…¥æ™‚é–“ï¼šç´„ ${data.message.split('æ–¼ ')[1]}<br>
+      ç›¸ä¼¼åº¦ï¼š${(data.similarity * 100).toFixed(2)}%
+    `;
     } else if (data.status === 'fail') {
       resultDiv.className = 'fail';
       resultDiv.innerHTML = `${data.message}`;
@@ -108,7 +117,7 @@ function autoDetect() {
   })
   .catch(err => {
     resultDiv.className = 'fail';
-    resultDiv.innerHTML = "¶Ç°e¼v¹³¿ù»~";
+    resultDiv.innerHTML = "å‚³é€å½±åƒéŒ¯èª¤";
     console.error(err);
   });
 }
@@ -132,8 +141,8 @@ window.onload = () => {
       startLoop();
     })
     .catch(err => {
-      console.error("µLªk¶}±ÒÄá¼v¾÷", err);
-      resultDiv.innerHTML = "µLªk¶}±ÒÄá¼v¾÷";
+      console.error("ç„¡æ³•é–‹å•Ÿæ”å½±æ©Ÿ", err);
+      resultDiv.innerHTML = "ç„¡æ³•é–‹å•Ÿæ”å½±æ©Ÿ";
     });
 };
 </script>

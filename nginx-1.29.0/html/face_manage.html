@@ -13,10 +13,16 @@
   </style>
  <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 </head>
 <body>
-
+<div id="cameraModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+  <div style="background:#fff; padding:20px; border-radius:8px; text-align:center;">
+    <h3>請對準鏡頭並點擊下方按鈕</h3>
+    <video id="cameraVideo" autoplay width="320" height="240" style="border:1px solid #ccc;"></video><br>
+    <button id="takePhotoBtn" style="margin-top:10px;">拍照註冊</button>
+    <button onclick="closeCameraModal()" style="margin-top:10px;">取消</button>
+  </div>
+</div>
 
   <h2>人臉管理與會議排程</h2>
 
@@ -65,10 +71,10 @@
   <button id="logoutBtn">登出</button>
 
 <script>
-let ip = "https://f3f0dd590a09.ngrok-free.app/api";
+let ip = "https://b8a1bfc61afd.ngrok-free.app";
 
 async function loadFaces() {
-  const res = await fetch(`${ip}/faces`, { credentials: 'include' });
+  const res = await fetch(`${ip}/api/faces`, { credentials: 'include' });
   const data = await res.json();
   if (data.status === 'success') {
     const container = document.getElementById('faceList');
@@ -78,11 +84,22 @@ async function loadFaces() {
 
     data.faces.forEach(f => {
       const faceDiv = document.createElement('div');
-      faceDiv.innerHTML = `
-        <img src="${f.url}" alt="${f.name}">
-        ${f.name}
-        <button onclick="deleteUser(${f.id})" style="margin-left:10px;color:red;">❌ 刪除</button>
-      `;
+    
+      const img = document.createElement('img');
+      img.src = f.url;
+      img.alt = f.name;
+      
+      const nameText = document.createTextNode(f.name);
+
+      const delBtn = document.createElement('button');
+      delBtn.textContent = "刪除";
+      delBtn.style.color = "red";
+      delBtn.style.marginLeft = "10px";
+      delBtn.onclick = () => deleteUser(f.id);
+
+      faceDiv.appendChild(img);
+      faceDiv.appendChild(nameText);
+      faceDiv.appendChild(delBtn);
       container.appendChild(faceDiv);
 
       const checkboxDiv = document.createElement('div');
@@ -98,7 +115,7 @@ async function loadFaces() {
 }
 
 async function loadSchedules() {
-  const res = await fetch(`${ip}/get_schedules`, { credentials: 'include' });
+  const res = await fetch(`${ip}/api/get_schedules`, { credentials: 'include' });
   const data = await res.json();
   if (data.status === 'success') {
     const container = document.getElementById('schedules');
@@ -109,7 +126,7 @@ async function loadSchedules() {
       div.style.marginBottom = "10px";
       div.innerHTML = `
         ${time} ： ${users.join(', ')}
-        <button onclick="deleteSchedule(decodeURIComponent('${safeTime}'))" style="margin-left: 10px; color: red;">🗑️ 刪除排程</button>
+        <button onclick="deleteSchedule(decodeURIComponent('${safeTime}'))" style="margin-top: 10px; color: red;">刪除排程</button>
       `;
       container.appendChild(div);
     }
@@ -119,7 +136,7 @@ async function loadSchedules() {
 async function deleteUser(userId) {
   if (!confirm('確定要刪除這個使用者嗎？這會清除照片與資料。')) return;
 
-  const res = await fetch(`${ip}/delete_user/${userId}`, {
+  const res = await fetch(`${ip}/api/delete_user/${userId}`, {
     method: 'DELETE',
     credentials: 'include'
   });
@@ -135,7 +152,7 @@ async function deleteSchedule(fullTimeKey) {
 
   const [meetingName, timeSlot] = fullTimeKey.split("｜"); 
 
-  const res = await fetch(`${ip}/delete_schedule`, {
+  const res = await fetch(`${ip}/api/delete_schedule`, {
     method: "POST",
     credentials: 'include',
     headers: { "Content-Type": "application/json" },
@@ -152,35 +169,61 @@ async function deleteSchedule(fullTimeKey) {
 
 document.getElementById('registerBtn').onclick = async () => {
   const name = document.getElementById('newName').value.trim();
-  const photo = document.getElementById('newPhoto').files[0];
+  const photoInput = document.getElementById('newPhoto');
+  const photo = photoInput.files[0];
   const msgDiv = document.getElementById('registerMsg');
 
-  if (!name || !photo) {
-    alert('請填寫姓名並選擇照片');
+  if (!name) {
+    alert('請輸入姓名');
     return;
   }
 
-  const formData = new FormData();
-  formData.append("name", name);
-  formData.append("photo", photo);
-
-  const res = await fetch(`${ip}/register`, {
-    method: 'POST',
-    credentials: 'include',
-    body: formData
+  const checkRes = await fetch(`${ip}/api/check_name_exists?name=${encodeURIComponent(name)}`, {
+    credentials: 'include'
   });
+  const checkData = await checkRes.json();
 
-  const data = await res.json();
-  if (data.status === 'success') {
-    msgDiv.style.color = 'green';
-    msgDiv.textContent = data.message;
-    document.getElementById('newName').value = '';
-    document.getElementById('newPhoto').value = '';
-    loadFaces();
-  } else {
-    msgDiv.style.color = 'red';
-    msgDiv.textContent = data.message;
+  if (checkData.exists) {
+    alert('此姓名已註冊，請使用不同名稱');
+    return;
   }
+
+  if (photo) {
+    // ✅ 有照片就直接註冊
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("photo", photo);
+
+    const res = await fetch(`${ip}/api/register`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    });
+
+    const data = await res.json();
+    if (data.status === 'success') {
+      msgDiv.style.color = 'green';
+      msgDiv.textContent = data.message;
+      document.getElementById('newName').value = '';
+      photoInput.value = '';
+      loadFaces();
+    } else {
+      msgDiv.style.color = 'red';
+      msgDiv.textContent = data.message;
+    }
+  } else {
+    // ❌ 沒有照片 → 自動開啟相機拍照
+    try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    const video = document.getElementById('cameraVideo');
+    video.srcObject = stream;
+    videoStream = stream; // 儲存 stream，等下拍照後可以關掉
+    document.getElementById('cameraModal').style.display = 'flex';
+  } catch (err) {
+    alert('開啟攝影機失敗，請允許瀏覽器使用相機');
+    console.error(err);
+  }
+}
 };
 
 document.getElementById('saveScheduleBtn').onclick = async () => {
@@ -209,7 +252,7 @@ document.getElementById('saveScheduleBtn').onclick = async () => {
     names: names
   };
 
-  const res = await fetch(`${ip}/allowed_users_by_schedule`, {
+  const res = await fetch(`${ip}/api/allowed_users_by_schedule`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -228,11 +271,63 @@ document.getElementById('saveScheduleBtn').onclick = async () => {
   }
 };
 
+let videoStream = null;
+
+function closeCameraModal() {
+  document.getElementById('cameraModal').style.display = 'none';
+  if (videoStream) {
+    videoStream.getTracks().forEach(track => track.stop());
+    videoStream = null;
+  }
+}
+
+document.getElementById('takePhotoBtn').onclick = async () => {
+  const name = document.getElementById('newName').value.trim();
+  const msgDiv = document.getElementById('registerMsg');
+  const video = document.getElementById('cameraVideo');
+
+  if (!name) {
+    alert("請輸入姓名後再拍照");
+    return;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 320;
+  canvas.height = 240;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  canvas.toBlob(async blob => {
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("photo", blob, `${name}.jpg`);
+
+    const res = await fetch(`${ip}/api/register`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    });
+
+    const data = await res.json();
+    if (data.status === 'success') {
+      msgDiv.style.color = 'green';
+      msgDiv.textContent = data.message;
+      document.getElementById('newName').value = '';
+      loadFaces();
+    } else {
+      msgDiv.style.color = 'red';
+      msgDiv.textContent = data.message;
+    }
+
+    closeCameraModal();
+  }, 'image/jpeg');
+};
+
 document.getElementById('logoutBtn').onclick = () => {
   handleLogout();
 };
 async function handleLogout() {
-  const res = await fetch(`${ip}/admin_logout`, {
+  const res = await fetch(`${ip}/api/admin_logout`, {
     method: 'POST',
     credentials: 'include'
   });
@@ -246,7 +341,7 @@ async function handleLogout() {
 }
 // ✅ 檢查登入狀態（進入頁面時）
 window.onload = async () => {
-  const res = await fetch(`${ip}/admin_login_status`, {
+  const res = await fetch(`${ip}/api/admin_login_status`, {
     method: 'GET',
     credentials: 'include'
   });

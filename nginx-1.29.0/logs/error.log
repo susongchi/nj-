@@ -260,3 +260,13 @@
 2025/07/18 11:55:05 [notice] 18720#25336: signal process started
 2025/07/18 11:59:02 [notice] 25272#29400: signal process started
 2025/07/18 12:11:12 [notice] 16252#26044: signal process started
+2025/07/18 17:35:43 [emerg] 18012#29640: duplicate location "/api" in C:\Users\x1206\nj-\nginx-1.29.0/conf/nginx.conf:54
+2025/07/18 17:45:25 [emerg] 6088#21580: duplicate location "/api" in C:\Users\x1206\nj-\nginx-1.29.0/conf/nginx.conf:54
+2025/07/18 17:47:31 [emerg] 26136#5864: duplicate location "/api" in C:\Users\x1206\nj-\nginx-1.29.0/conf/nginx.conf:81
+2025/07/18 17:47:42 [emerg] 29744#16932: duplicate location "/api" in C:\Users\x1206\nj-\nginx-1.29.0/conf/nginx.conf:81
+2025/07/21 14:32:30 [notice] 18532#8100: signal process started
+2025/07/21 14:33:56 [notice] 19404#18716: signal process started
+2025/07/21 14:36:13 [notice] 20144#6184: signal process started
+2025/07/21 14:40:50 [notice] 4884#24616: signal process started
+2025/07/21 15:00:42 [notice] 16348#15884: signal process started
+2025/07/21 15:37:09 [notice] 11964#1764: signal process started
