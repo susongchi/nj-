@@ -1,6 +1,6 @@
 from db import get_db_connection
 from facepro import model, REGISTERED_DIR
-from utils import request, cv2, base64, np, os
+from utils.utils import request, cv2, base64, np, os
 def register_f():
         name = request.form.get("name") or (request.json.get("name") if request.is_json else None)
         file = request.files.get("photo")

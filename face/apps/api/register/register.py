@@ -1,6 +1,6 @@
 from apps.api import api_bp
 from .registerfunction import *
-from utils import Api, Resource
+from utils.utils import Api, Resource
 
 api = Api(app=api_bp)
 

@@ -1,4 +1,5 @@
-from utils import os, YOLO, generate_password_hash
+from utils.utils import os, YOLO, generate_password_hash
+from utils.claenup_db import start_scheduler
 
 new_password = "su-song-chi_monkey14"
 hashed = generate_password_hash(new_password)
@@ -7,7 +8,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REGISTERED_DIR = os.path.join(BASE_DIR, "static", "registered_faces")
 BASE_IP = "127.0.0.1"
 BASE_PORT = 5000
-BASE_URL = "https://b8a1bfc61afd.ngrok-free.app"
+BASE_URL = "https://09263e57432f.ngrok-free.app"
 
 os.makedirs(REGISTERED_DIR, exist_ok=True)
 
@@ -18,6 +19,7 @@ SIMILARITY_THRESHOLD = 0.5
 if __name__ == "__main__":
     from apps import create_app
     app = create_app()
+    start_scheduler()
 
     from db import init_db
     init_db()

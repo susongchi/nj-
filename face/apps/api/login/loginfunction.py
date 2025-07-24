@@ -1,6 +1,6 @@
 from db import get_db_connection
 from facepro import REGISTERED_DIR, SIMILARITY_THRESHOLD
-from utils import datetime, request, cv2, base64, np, face_recognition, os
+from utils.utils import datetime, request, cv2, base64, np, face_recognition, os
 
 def current_meeting_f():
         now = datetime.now()

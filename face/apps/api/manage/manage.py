@@ -1,6 +1,6 @@
 from apps.api import api_bp
 from .managefunction import *
-from utils import Api, Resource, login_required
+from utils.utils import Api, Resource, login_required
 
 api = Api(app=api_bp)
 
@@ -10,8 +10,9 @@ class AdminRegisterApi(Resource):
         data = request.get_json()
         username = data.get("username")
         password = data.get("password")
+        email = data.get("email")
 
-        _return = admin_register_post_f(username=username, password=password)
+        _return = admin_register_post_f(username=username, password=password, email=email)
         return _return
                       
 class AdminLoginApi(Resource):
@@ -24,6 +25,15 @@ class AdminLoginApi(Resource):
         _return = admin_login_post_f(username=username, password=password)
         return _return
                 
+class AdminForgetPasswordApi(Resource):
+
+    def post(self):
+        data = request.get_json()
+        email = data.get("email")
+
+        _return = admin_forget_password_f(email=email)
+        return _return
+    
 class AdminLoginStatusApi(Resource):
 
     def get(self):
@@ -111,3 +121,4 @@ api.add_resource(AllowedUsersByScheduleApi, "/allowed_users_by_schedule")
 api.add_resource(DeleteSchedule, "/delete_schedule")
 api.add_resource(AdminLogout, "/admin_logout")
 api.add_resource(CheckNameExists, "/check_name_exists")
+api.add_resource(AdminForgetPasswordApi, "/admin_forget_password")

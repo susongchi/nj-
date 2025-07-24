@@ -45,7 +45,7 @@
       const imageData = canvas.toDataURL('image/jpeg');
 
       // 傳送資料
-      const res = await fetch('https://b8a1bfc61afd.ngrok-free.app/api/register', {
+      const res = await fetch('https://09263e57432f.ngrok-free.app/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, image: imageData })

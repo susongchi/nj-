@@ -1,4 +1,4 @@
-from utils import pymysql, UserMixin
+from utils.utils import pymysql, UserMixin
 
 class AdminUser(UserMixin):
     def __init__(self, id, username):
@@ -56,10 +56,22 @@ def init_db():
                 FOREIGN KEY (meeting_id) REFERENCES meetings(id)
             )
         """)
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS admin_users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 username VARCHAR(100) UNIQUE NOT NULL,
-                password VARCHAR(255) NOT NULL
+                password VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL
             )
         """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS password_resets (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                token VARCHAR(255) NOT NULL,
+                expires_at DATETIME NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES admin_users(id)
+            )
+        """)   

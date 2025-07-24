@@ -1,6 +1,6 @@
 from apps.api import api_bp
 from .loginfunction import *
-from utils import Resource, Api
+from utils.utils import Resource, Api
 
 api = Api(app=api_bp)
 

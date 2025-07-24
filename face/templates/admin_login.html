@@ -73,6 +73,17 @@
             width: 100%;
             text-align: center; 
         }
+
+        a {
+            text-decoration: none;
+            color: #333;
+            font-size: 14px;
+            transition: 0.5s;
+        }
+        a:hover {
+            color: #4a4aff;
+            text-decoration: underline;
+        }
     </style>
 </head>
 
@@ -93,6 +104,9 @@
         <div class="eye-row">
           <div id="eye">顯示密碼</div>
         </div>
+        <div class="forget-row">
+            <a href="/admin_forget_password">忘記密碼</a>
+        </div>
         <div class="register-row">
           <a href="/admin_register">註冊帳號</a>
         </div>
@@ -101,7 +115,7 @@
     </section>
 
     <script>
-        let ip = "https://b8a1bfc61afd.ngrok-free.app";
+        let ip = "https://09263e57432f.ngrok-free.app";
 
         const eye = document.getElementById("eye")
         const username = document.getElementById("adminUser")

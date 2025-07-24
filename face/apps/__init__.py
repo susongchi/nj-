@@ -1,4 +1,4 @@
-from utils import Flask, jsonify, CORS, LoginManager
+from utils.utils import Flask, jsonify, CORS, LoginManager
 from apps.api import api_bp
 from db import get_db_connection, AdminUser
 

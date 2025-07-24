@@ -42,10 +42,10 @@
     }
 
     .register-row{
-        display: flex;
-            justify-content: center;
-            width: 100%;
-            text-align: center;
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      text-align: center;
     }
   </style>
 </head>
@@ -58,6 +58,9 @@
   <label for="password">密碼</label>
   <input type="password" id="password" placeholder="請輸入密碼" required>
 
+  <label for="email">信箱</label>
+  <input type="email" id="email" placeholder="請輸入信箱" required>
+
   <div class="register-row">
         <a href="/admin_login">登入</a>
     </div>
@@ -66,19 +69,21 @@
   <div id="message"></div>
 
   <script>
-    let ip = "https://b8a1bfc61afd.ngrok-free.app";
+    let ip = "https://09263e57432f.ngrok-free.app";
 
     const username = document.getElementById("username")
     const password = document.getElementById("password")
-    const inputList = [username, password]
+    const email = document.getElementById("email")
+    const inputList = [username, password, email]
 
     const handleregister = async () => {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
+      const email = document.getElementById("email").value.trim();
       const msgDiv = document.getElementById("message");
 
-      if (!username || !password) {
-        msgDiv.textContent = "請輸入帳號與密碼";
+      if (!username || !password || !email) {
+        msgDiv.textContent = "請填寫所有欄位";
         msgDiv.style.color = "red";
         return;
       }
@@ -86,7 +91,7 @@
       const res = await fetch(`${ip}/api/admin_register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password, email })
       });
 
       const data = await res.json();
@@ -105,6 +110,8 @@
                 }
             });
         });
+    document.getElementById("registerBtn").onclick = handleregister;
+
   </script>
 </body>
 </html>

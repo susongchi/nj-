@@ -1,20 +1,27 @@
 from db import get_db_connection, AdminUser
 from facepro import BASE_URL, REGISTERED_DIR, BASE_DIR
-from utils import datetime, os, send_from_directory, logout_user
-from utils import generate_password_hash, pymysql, check_password_hash, login_user, current_user, request
+from utils.utils import datetime, os, send_from_directory, logout_user, secrets, timedelta
+from utils.utils import generate_password_hash, pymysql, check_password_hash, login_user, current_user, request
+from utils.mail_utils import send_reset_email
 
-def admin_register_post_f(username, password):
-    if not username or not password:
+def admin_register_post_f(username, password, email):
+    if not username or not password or not email:
         return{"status": "fail", "message": "❌ 使用者名稱或密碼不可為空"}, 400
     hashed_password = generate_password_hash(password)
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("INSERT INTO admin_users (username, password) VALUES (%s, %s)", (username, hashed_password))
+                cur.execute("INSERT INTO admin_users (username, password, email) VALUES (%s, %s, %s)", (username, hashed_password, email))
                 conn.commit()
         return{"status": "success", "message": "✅ 管理員帳號已註冊"},200
-    except pymysql.IntegrityError:
-        return{"status": "fail", "message": "❌ 使用者名稱已存在"}, 409
+    except pymysql.IntegrityError as e:
+        if "username" in str(e):
+            return{"status": "fail", "message": "❌ 使用者名稱已存在"}, 409
+        elif "email" in str(e):
+            return{"status": "fail", "message": "此信箱已註冊"}, 409
+        else:
+            return{"status": "fail", "message": "註冊失敗，請稍後再試"}, 500 
+    
     
 def admin_login_post_f(username, password):
     with get_db_connection() as conn:
@@ -28,11 +35,44 @@ def admin_login_post_f(username, password):
                     return{"status": "success", "message": "登入成功"}
                 else:
                     return{"status": "fail", "message": "帳號或密碼錯誤"}, 401
-                
+
+def admin_forget_password_f(email):
+    if not email:
+        return {"status": "fail", "message": "請輸入信箱"}, 400
+    
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            # 查詢使用者
+            cur.execute("SELECT * FROM admin_users WHERE email=%s", (email,))
+
+            user = cur.fetchone()
+            if not user:
+                return {"status": "fail", "message": "未找到此信箱"}, 404
+            
+            # 產生 token 與過期時間
+            token = secrets.token_urlsafe(32)
+            expiry = datetime.now() + timedelta(minutes=30)
+            user_id = user["id"]
+
+            # 寫入 password_resets 資料表（如有則更新）
+            cur.execute("""
+                INSERT INTO password_resets (user_id, token, expires_at)
+                VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE token = VALUES(token), expires_at = VALUES(expires_at)
+            """, (user_id, token, expiry))
+            conn.commit()
+
+    reset_link = f"{BASE_URL}/reset_password?token={token}&uid={user_id}"
+    result = send_reset_email(email, reset_link)
+    if result:
+        return {"status": "success", "message": "已寄送重設密碼連結至您的信箱"}
+    else:
+        return{"status": "fail","message": "未發送信件"}, 500
+
 def admin_login_status_f():
     if current_user.is_authenticated:
             return{"status": "success","message": 
-                            f"✅ 已登入：{current_user.username}","username": current_user.username}
+            f"✅ 已登入：{current_user.username}","username": current_user.username}
     else:
             return{"status": "fail","message": "❌ 尚未登入"}, 401
     
