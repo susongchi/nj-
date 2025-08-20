@@ -85,6 +85,14 @@ class AllowedUsersByScheduleApi(Resource):
 
         _return = allowed_users_by_schedule_f()
         return _return 
+    
+class FaceCountFApi(Resource):
+
+    @login_required
+    def post(self):
+
+        _return = face_count_f()
+        return _return
 
 class GetSchedules(Resource):
 
@@ -118,6 +126,7 @@ api.add_resource(RegisterFaceApi, "/register_face")
 api.add_resource(DeleteUserApi, "/delete_user/<int:user_id>")
 api.add_resource(GetSchedules, "get_schedules")
 api.add_resource(AllowedUsersByScheduleApi, "/allowed_users_by_schedule")
+api.add_resource(FaceCountFApi, "face_count")
 api.add_resource(DeleteSchedule, "/delete_schedule")
 api.add_resource(AdminLogout, "/admin_logout")
 api.add_resource(CheckNameExists, "/check_name_exists")

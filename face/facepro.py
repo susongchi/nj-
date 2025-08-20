@@ -8,7 +8,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REGISTERED_DIR = os.path.join(BASE_DIR, "static", "registered_faces")
 BASE_IP = "127.0.0.1"
 BASE_PORT = 5000
-BASE_URL = "https://09263e57432f.ngrok-free.app"
+BASE_URL = "https://322b23d6594f.ngrok-free.app"
 
 os.makedirs(REGISTERED_DIR, exist_ok=True)
 
@@ -27,4 +27,4 @@ if __name__ == "__main__":
     # 印出註冊表
     for rule in app.url_map.iter_rules():
         print(f"{rule.endpoint:30s} ➜ {rule.methods} ➜ {rule.rule}")
-    app.run(host=BASE_IP, port=BASE_PORT, debug=True)
+    app.run(host=BASE_IP, port=BASE_PORT, debug=False)
