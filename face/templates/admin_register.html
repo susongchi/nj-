@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>後臺登入註冊</title>
+<style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #message {
+      margin-top: 15px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .register-row{
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>註冊帳號</h2>
+
+  <label for="username">帳號</label>
+  <input type="text" id="username" placeholder="請輸入帳號" required>
+
+  <label for="password">密碼</label>
+  <input type="password" id="password" placeholder="請輸入密碼" required>
+
+  <label for="email">信箱</label>
+  <input type="email" id="email" placeholder="請輸入信箱" required>
+
+  <div class="register-row">
+        <a href="/admin_login">登入</a>
+    </div>
+  <button id="registerBtn">註冊</button>
+
+  <div id="message"></div>
+
+  <script>
+    let ip = "https://09263e57432f.ngrok-free.app";
+
+    const username = document.getElementById("username")
+    const password = document.getElementById("password")
+    const email = document.getElementById("email")
+    const inputList = [username, password, email]
+
+    const handleregister = async () => {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const msgDiv = document.getElementById("message");
+
+      if (!username || !password || !email) {
+        msgDiv.textContent = "請填寫所有欄位";
+        msgDiv.style.color = "red";
+        return;
+      }
+
+      const res = await fetch(`${ip}/api/admin_register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, email })
+      });
+
+      const data = await res.json();
+      if (data.status === "success") {
+        msgDiv.style.color = "green";
+        msgDiv.textContent = "註冊成功";
+      } else{
+        msgDiv.style.color = "red";
+        msgDiv.textContent = data.message;
+      };
+    }
+    inputList.forEach(element => {
+            element.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") {
+                    handleregister();
+                }
+            });
+        });
+    document.getElementById("registerBtn").onclick = handleregister;
+
+  </script>
+</body>
+</html>
+

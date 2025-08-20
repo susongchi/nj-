@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>後台登入</title>
+    <style>
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header img {
+            width: 50px;
+            height: 50px;
+            /* margin-right: 20px; */
+        }
+
+        .header h1 {
+            margin-right: 24px;
+            font-size: 24px;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+
+        section {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            text-align: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            font-size: 16px;
+        }
+
+        button {
+            width: 50%;
+            padding: 10px;
+            margin: 8px 0;
+            font-size: 16px;
+        }
+
+        .eye-row {
+            display: flex;
+            justify-content: end;
+            width: 100%;
+        }
+
+        #eye {
+            font-size: 14px;
+            color: #444;
+        }
+
+        .register-row {
+           display: flex;
+            justify-content: center;
+            width: 100%;
+            text-align: center; 
+        }
+
+        a {
+            text-decoration: none;
+            color: #333;
+            font-size: 14px;
+            transition: 0.5s;
+        }
+        a:hover {
+            color: #4a4aff;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <section>
+        <div class="header">
+            <img class="logo"
+                src="https://i.ibb.co/PZVYTR1N/logo-12-1.png"
+                alt="logo">
+            <h1 class="title">後台登入</h1>
+        </div>
+        <label for="adminUser">帳號</label>
+        <input type="text" id="adminUser" />
+        <label for="adminPass">密碼</label>
+        <input type="password" id="adminPass" />
+        <i id="checkEye" class="fa fa-eye" aria-hidden="true"></i>
+       
+        <div class="eye-row">
+          <div id="eye">顯示密碼</div>
+        </div>
+        <div class="forget-row">
+            <a href="/admin_forget_password">忘記密碼</a>
+        </div>
+        <div class="register-row">
+          <a href="/admin_register">註冊帳號</a>
+        </div>
+        <button id="adminLoginBtn">登入</button>
+        <div id="adminLoginMsg"></div>
+    </section>
+
+    <script>
+        let ip = "https://09263e57432f.ngrok-free.app";
+
+        const eye = document.getElementById("eye")
+        const username = document.getElementById("adminUser")
+        const password = document.getElementById("adminPass")
+        const inputList = [username, password];
+
+        const handleLogin = async () => {
+            const username = document.getElementById("adminUser").value.trim();
+            const password = document.getElementById("adminPass").value.trim();
+            const msgDiv = document.getElementById("adminLoginMsg");
+
+            const res = await fetch(`${ip}/api/admin_login`, {
+                method: "POST",
+                credentials: "include",  
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await res.json();
+            if (data.status === "success") {
+                msgDiv.style.color = "green";
+                msgDiv.textContent = "登入成功";
+                window.location.href = "face_manage"; 
+            } else {
+                msgDiv.style.color = "red";
+                msgDiv.textContent = data.message;
+            };
+        }
+
+        inputList.forEach(element => {
+            element.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") {
+                    handleLogin();
+                }
+            });
+        });
+        eye.addEventListener("click", function () {
+            if (password.type === "password") {
+                password.type = "text";
+                eye.textContent = "隱藏密碼";
+            } else {
+                password.type = "password";
+                eye.textContent = "顯示密碼";
+            }
+        });
+
+        document.getElementById("adminLoginBtn").onclick = () => {
+            handleLogin()
+        };
+
+    </script>
+</body>
+
+</html>
