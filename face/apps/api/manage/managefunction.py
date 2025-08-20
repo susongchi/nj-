@@ -1,6 +1,6 @@
 from db import get_db_connection, AdminUser
 from facepro import BASE_URL, REGISTERED_DIR, BASE_DIR
-from utils.utils import datetime, os, send_from_directory, logout_user, secrets, timedelta
+from utils.utils import datetime, os, send_from_directory, logout_user, secrets, timedelta, cv2, np
 from utils.utils import generate_password_hash, pymysql, check_password_hash, login_user, current_user, request
 from utils.mail_utils import send_reset_email
 
@@ -72,9 +72,9 @@ def admin_forget_password_f(email):
 def admin_login_status_f():
     if current_user.is_authenticated:
             return{"status": "success","message": 
-            f"✅ 已登入：{current_user.username}","username": current_user.username}
+            f"已登入：{current_user.username}","username": current_user.username}
     else:
-            return{"status": "fail","message": "❌ 尚未登入"}, 401
+            return{"status": "fail","message": "尚未登入"}, 401
     
 def face_f():
     conn = get_db_connection()
@@ -128,12 +128,12 @@ def register_face_f():
                 cur.execute("UPDATE users SET image_path = %s WHERE id = %s", (rel_path, user_id))
                 conn.commit()
 
-        return {"status": "success", "message": f"✅ 使用者 {name} 的照片已更新"}, 200
+        return {"status": "success", "message": f"使用者 {name} 的照片已更新"}, 200
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return {"status": "fail", "message": f"❌ 錯誤：{str(e)}"}, 500
+        return {"status": "fail", "message": f"錯誤：{str(e)}"}, 500
         
 def delete_user_f(user_id):
         try:
@@ -160,12 +160,12 @@ def delete_user_f(user_id):
                     cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
                 conn.commit()
 
-            return{"status": "success", "message": "✅ 使用者已刪除"}
+            return{"status": "success", "message": "使用者已刪除"}
 
         except Exception as e:
             import traceback
             traceback.print_exc()
-            return{"status": "fail", "message": f"❌ 刪除失敗：{str(e)}"}, 500
+            return{"status": "fail", "message": f"刪除失敗：{str(e)}"}, 500
         
 def allowed_users_by_schedule_f():
     new_data = request.get_json()
@@ -189,15 +189,15 @@ def allowed_users_by_schedule_f():
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            # 🔍 先檢查所有排程是否有重疊
+            #  先檢查所有排程是否有重疊
             cur.execute("SELECT meeting_name, time_start, time_end FROM meetings")
             for row in cur.fetchall():
                 exist_start = row['time_start']
                 exist_end = row['time_end']
                 if max(new_start, exist_start) < min(new_end, exist_end):
-                    return {"status": "fail", "message": f"❌ 此時段與『{row['meeting_name']}』的排程時間重疊"}
+                    return {"status": "fail", "message": f"此時段與『{row['meeting_name']}』的排程時間重疊"}
 
-            # ✅ 沒衝突，正式寫入排程
+            # 沒衝突，正式寫入排程
             cur.execute("INSERT INTO meetings (meeting_name, time_start, time_end) VALUES (%s, %s, %s)",
                         (meeting_name, new_start, new_end))
             meeting_id = cur.lastrowid
@@ -214,7 +214,42 @@ def allowed_users_by_schedule_f():
 
             conn.commit()
 
-    return {"status": "success", "message": "✅ 排程已成功儲存"}
+    return {"status": "success", "message": "排程已成功儲存"}
+
+def face_count_f():
+    """
+    接收 multipart/form-data 的 image 檔案，回傳臉部數量。
+    回傳格式：{"status":"success","count": <int>}
+    """
+    try:
+        file = request.files.get("image")
+        if not file:
+            return {"status": "fail", "message": "缺少 image 檔案"}, 400
+
+        # 讀成 OpenCV 影像
+        buf = np.frombuffer(file.read(), dtype=np.uint8)
+        img = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+        if img is None:
+            return {"status": "fail", "message": "圖片解析失敗"}, 400
+
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        # 使用 OpenCV 內建的正臉分類器
+        cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        )
+        faces = cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.1,      # 可視需求微調
+            minNeighbors=5,
+            minSize=(60, 60)      # 臉太小容易誤判；可改 80x80 試試
+        )
+        return {"status": "success", "count": int(len(faces))}, 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}, 500
 
 def get_schedules_f():
     result = {}
@@ -244,9 +279,9 @@ def get_schedules_f():
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return{"status": "fail", "message": f"❌ 取得排程失敗：{str(e)}"}, 500
+        return{"status": "fail", "message": f"取得排程失敗：{str(e)}"}, 500
 
-    return{"status": "success", "schedule": result}   
+    return{"status": "success", "schedule": result}
 
 def delete_schedule_f():
     data = request.get_json()

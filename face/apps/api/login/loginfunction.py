@@ -28,7 +28,7 @@ def login_status_f():
         now = datetime.now()
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                # 1️⃣ 找出目前進行中的會議
+                #找出目前進行中的會議
                 cur.execute("SELECT * FROM meetings")
                 meeting = None
                 for m in cur.fetchall():
@@ -41,7 +41,7 @@ def login_status_f():
 
                 meeting_id = meeting["id"]
 
-                # 2️⃣ 取得與會者名單
+                #取得與會者名單
                 cur.execute("""
                     SELECT u.id, u.name FROM meeting_name mn
                     JOIN users u ON mn.user_id = u.id
@@ -49,14 +49,14 @@ def login_status_f():
                 """, (meeting_id,))
                 users = cur.fetchall()
 
-                # 3️⃣ 查詢登入紀錄（根據會議 ID）
+                # 查詢登入紀錄（根據會議 ID）
                 cur.execute("""
                     SELECT user_id, login_time FROM login_records
                     WHERE meeting_id = %s
                 """, (meeting_id,))
                 logs = cur.fetchall()
 
-                # 4️⃣ 判斷誰登入了
+                #判斷誰登入了
                 logged_in = {
                     u["name"]: r["login_time"].strftime("%H:%M")
                     for u in users for r in logs if u["id"] == r["user_id"]
@@ -132,16 +132,16 @@ def auto_verify_f():
                         best_sim = sim
                         best_match = (uid, uname)
 
-                # 4️⃣ 判斷是否達相似度門檻
+                #判斷是否達相似度門檻
                 if not best_match or best_sim < SIMILARITY_THRESHOLD:
                     return{"status": "fail", "message": "找不到相符的臉部資料"}, 403
 
                 uid, name = best_match
 
-                # 5️⃣ 判斷是否在此會議排程中
+                #判斷是否在此會議排程中
                 if uid not in allowed_ids:
                     return{"status": "fail", "message": f"{name} 不在此時段排程中"}, 403
-                # 5.5️⃣ 檢查是否已登入
+                #檢查是否已登入
                 cur.execute("""
                     SELECT * FROM login_records
                     WHERE user_id = %s AND meeting_id = %s
@@ -159,7 +159,7 @@ def auto_verify_f():
                         "meeting_id": meeting_id
                 }, 200
 
-                # 6️⃣ 寫入登入紀錄（含會議 ID）
+                #寫入登入紀錄（含會議 ID）
                 cur.execute("""
                     INSERT INTO login_records (user_id, login_time, meeting_id)
                     VALUES (%s, %s, %s)
